@@ -10,7 +10,7 @@
 .\mvnw.cmd test
 ```
 
-预期：15 项自动化测试通过。
+预期：16 项自动化测试通过。
 
 ## 2. 启动基础设施与应用
 
@@ -22,14 +22,14 @@ docker compose up -d --build
 
 ## 3. 展示业务闭环
 
-使用 `api-examples.http` 依次演示：
+先打开 `http://localhost:8080` 展示内置 Operations Console，再使用 `api-examples.http` 依次演示：
 
 1. 注册并登录，获取 JWT。
 2. 创建企业项目和任务。
 3. 启动任务并查看 `task_activity`。
 4. 请求删除任务，展示审批状态。
 5. 使用 APPROVER/ADMIN 批准并执行删除。
-6. 查看 Agent Run/Step、Prometheus 指标和 Trace ID。
+6. 返回控制台查看状态分布和最近 Agent Run，再展示 Run/Step、Prometheus 指标和 Trace ID。
 
 ## 4. 面试讲解要点
 

@@ -103,6 +103,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/", "/index.html", "/app.css", "/app.js", "/favicon.svg").permitAll()
                         .requestMatchers("/api/v1/auth/**", "/actuator/health/**", "/actuator/info",
                                 "/actuator/prometheus").permitAll()
                         .requestMatchers("/actuator/metrics/**", "/actuator/flyway").hasRole("ADMIN")

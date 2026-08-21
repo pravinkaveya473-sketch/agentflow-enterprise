@@ -13,7 +13,7 @@
 
     <groupId>io.github.pravinkaveya473sketch</groupId>
     <artifactId>agentflow-enterprise</artifactId>
-    <version>2.0.0-phase1</version>
+    <version>2.0.0</version>
     <name>AgentFlow Enterprise</name>
     <description>Enterprise task orchestration and safe-execution Java AI Agent platform</description>
     <url>https://github.com/pravinkaveya473-sketch/agentflow-enterprise</url>
@@ -136,6 +136,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals><goal>build-info</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

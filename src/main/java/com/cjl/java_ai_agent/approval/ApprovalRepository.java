@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 
 public interface ApprovalRepository extends JpaRepository<ApprovalRequestEntity, String> {
+    long countByStatus(ApprovalStatus status);
     List<ApprovalRequestEntity> findAllByStatusOrderByRequestedAtAsc(ApprovalStatus status);
     List<ApprovalRequestEntity> findAllByStatusInAndExpiresAtLessThanEqual(
             Collection<ApprovalStatus> statuses, Instant expiresAt);
