@@ -1,0 +1,124 @@
+@baseUrl = http://localhost:8080
+@token = paste-token-here
+@adminToken = paste-admin-token-here
+@projectId = paste-project-id-here
+@taskId = paste-task-id-here
+@runId = paste-run-id-here
+@approvalId = paste-approval-id-here
+
+### Health
+GET {{baseUrl}}/actuator/health
+
+### Register
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "username": "cjl",
+  "password": "JavaAgent123!"
+}
+
+### Login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "cjl",
+  "password": "JavaAgent123!"
+}
+
+### Create Project
+POST {{baseUrl}}/api/v1/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+X-Idempotency-Key: project-001
+
+{
+  "name": "Java AI Agent 求职准备",
+  "description": "统一管理学习、项目改造和面试准备任务"
+}
+
+### List Projects
+GET {{baseUrl}}/api/v1/projects
+Authorization: Bearer {{token}}
+
+### Create Task In Project
+POST {{baseUrl}}/api/v1/tasks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+X-Idempotency-Key: task-001
+
+{
+  "projectId": "{{projectId}}",
+  "name": "完成 Tool Calling 评估",
+  "description": "建立 50 条覆盖成功、失败、审批和状态机的用例",
+  "assigneeUsername": "cjl",
+  "deadline": "2026-08-10T18:00:00",
+  "priority": "HIGH"
+}
+
+### Filter Tasks
+GET {{baseUrl}}/api/v1/tasks?projectId={{projectId}}&status=IN_PROGRESS
+Authorization: Bearer {{token}}
+
+### Start Task
+POST {{baseUrl}}/api/v1/tasks/{{taskId}}/start
+Authorization: Bearer {{token}}
+
+### Block Task
+POST {{baseUrl}}/api/v1/tasks/{{taskId}}/block
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "等待评估数据集确认"
+}
+
+### Resume Task
+POST {{baseUrl}}/api/v1/tasks/{{taskId}}/resume
+Authorization: Bearer {{token}}
+
+### Task Activities
+GET {{baseUrl}}/api/v1/tasks/{{taskId}}/activities
+Authorization: Bearer {{token}}
+
+### Agent Run
+POST {{baseUrl}}/api/v1/agents/task/runs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+X-Conversation-Id: learning-001
+X-Idempotency-Key: request-001
+
+{
+  "message": "创建一个名为 Spring AI 冲刺的项目，然后在项目里创建一个明天下午三点完成 Tool Calling 测试的高优先级任务"
+}
+
+### Agent Run Detail
+GET {{baseUrl}}/api/v1/agents/task/runs/{{runId}}
+Authorization: Bearer {{token}}
+
+### RAG Ask
+POST {{baseUrl}}/api/v1/knowledge/general/ask
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "question": "公司的高风险操作审批规则是什么？"
+}
+
+### Pending Approvals
+GET {{baseUrl}}/api/v1/approvals/pending
+Authorization: Bearer {{adminToken}}
+
+### Approve
+POST {{baseUrl}}/api/v1/approvals/{{approvalId}}/approve
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "comment": "确认允许执行"
+}
+
+### Evaluation
+POST {{baseUrl}}/api/v1/evaluations/task-agent
+Authorization: Bearer {{adminToken}}
