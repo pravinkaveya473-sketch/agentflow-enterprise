@@ -1,15 +1,19 @@
 $ErrorActionPreference = "Stop"
 
-Write-Host "[1/4] Compile and test"
-.\mvnw.cmd clean test
+Write-Host "[1/5] Compile and test all modules"
+.\mvnw.cmd clean verify
 
-Write-Host "[2/4] Package"
+Write-Host "[2/5] Package all services"
 .\mvnw.cmd -DskipTests package
 
-Write-Host "[3/4] Start infrastructure"
-docker compose up -d mysql redis
+Write-Host "[3/5] Validate Compose configuration"
+docker compose config --quiet
 
-Write-Host "[4/4] Show containers"
+Write-Host "[4/5] Start the complete stack"
+docker compose up -d --build
+
+Write-Host "[5/5] Run business and Kafka smoke test"
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 docker compose ps
 
-Write-Host "Verification completed. Start the app in IDEA or run: .\mvnw.cmd spring-boot:run"
+Write-Host "Verification completed. Gateway: http://localhost:8080"

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/pravinkaveya473-sketch/agentflow-enterprise/security/advisories/new
+    about: Report security issues privately; never disclose credentials in a public issue.

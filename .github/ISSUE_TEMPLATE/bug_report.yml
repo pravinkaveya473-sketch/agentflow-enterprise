@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible problem in AgentFlow Enterprise
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve AgentFlow Enterprise. Do not include credentials or private data.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: v3.0.1 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Gateway Service
+        - Core Service
+        - Event Service / Kafka
+        - Docker Compose
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include the smallest reproducible sequence and sanitized logs.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: OS, Java version, Docker version
+    validations:
+      required: true

@@ -2,6 +2,13 @@
 
 All notable changes are recorded here. This project follows semantic versioning.
 
+## Unreleased
+
+- Reworked the repository landing page around architecture, verifiable outcomes, interview navigation and an updated 3.0.1 visual identity.
+- Updated architecture and demo guides to match the current Gateway/Core/Event/Kafka topology.
+- Added structured issue forms and a pull request checklist for reproducible collaboration.
+- Expanded the verification script to cover all modules, Compose validation, the full stack and the Kafka business smoke test.
+
 ## 3.0.1 — 2026-08-24
 
 - Completed a clean-volume Docker Compose end-to-end deployment and business-path verification.
