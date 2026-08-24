@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: agentflow-event-service
+  datasource:
+    url: ${EVENT_MYSQL_URL:jdbc:mysql://localhost:3306/agentflow_event?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${MYSQL_USERNAME:agent}
+    password: ${MYSQL_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: agentflow-event-service-v1
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: io.github.pravinkaveya473sketch.agentflow.events
+        spring.json.value.default.type: io.github.pravinkaveya473sketch.agentflow.events.TaskLifecycleEvent
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    listener:
+      ack-mode: record
+
+server:
+  port: ${SERVER_PORT:8082}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,flyway
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+app:
+  kafka:
+    task-topic: ${TASK_EVENT_TOPIC:agentflow.task.lifecycle.v1}
+  security:
+    jwt-secret: ${JWT_SECRET}
+    jwt-issuer: ${JWT_ISSUER:agentflow-enterprise}

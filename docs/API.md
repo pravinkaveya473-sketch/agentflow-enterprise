@@ -34,6 +34,15 @@ All business responses use `{ success, code, message, data, timestamp }`. Except
 | `POST` | `/api/v1/tasks/{id}/cancel` | Cancel a non-terminal task |
 | `GET` | `/api/v1/tasks/{id}/activities` | Read task lifecycle evidence |
 
+## Event read model
+
+These endpoints are routed by Spring Cloud Gateway to Event Service and require the same JWT as Core Service.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/events` | List the latest 100 Kafka task lifecycle events for the current user |
+| `GET` | `/api/v1/events/{eventId}` | Read one authorized event record |
+
 ## Agent, knowledge and approvals
 
 | Method | Path | Purpose |

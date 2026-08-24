@@ -5,48 +5,88 @@ services:
       MYSQL_DATABASE: agentflow
       MYSQL_USER: agent
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set in .env}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
       TZ: Asia/Shanghai
-    ports:
-      - "3306:3306"
+    ports: ["3306:3306"]
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./deploy/mysql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uagent -p$${MYSQL_PASSWORD} --silent"]
       interval: 10s
       timeout: 5s
       retries: 20
 
+  mysql-bootstrap:
+    image: mysql:8.4
+    depends_on:
+      mysql: { condition: service_healthy }
+    environment:
+      MYSQL_PWD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set in .env}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mysql -hmysql -uroot -e "CREATE DATABASE IF NOT EXISTS agentflow_event
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+        GRANT ALL PRIVILEGES ON agentflow_event.* TO 'agent'@'%';
+        FLUSH PRIVILEGES;"
+
   redis:
     image: redis/redis-stack-server:7.4.0-v3
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
       REDIS_ARGS: "--requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}"
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+    ports: ["6379:6379"]
+    volumes: ["redis_data:/data"]
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a '$${REDIS_PASSWORD}' ping"]
       interval: 10s
       timeout: 5s
       retries: 20
 
-  app:
-    build: .
+  kafka:
+    image: apache/kafka:4.1.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:29092,CONTROLLER://:29093,PLAINTEXT_HOST://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports: ["9092:9092"]
+    volumes: ["kafka_data:/var/lib/kafka/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  core-service:
+    build:
+      context: .
+      args: { MODULE: services/core-service }
     depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8081
       MYSQL_URL: jdbc:mysql://mysql:3306/agentflow?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
       MYSQL_USERNAME: agent
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set in .env}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:?DASHSCOPE_API_KEY must be set in .env}
       QWEN_BASE_URL: ${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode}
       QWEN_MODEL: ${QWEN_MODEL:-qwen-plus}
@@ -55,27 +95,62 @@ services:
       JWT_ISSUER: ${JWT_ISSUER:-agentflow-enterprise}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set in .env}
-    ports:
-      - "8080:8080"
-    volumes:
-      - uploads_data:/app/data/uploads
+    volumes: ["uploads_data:/app/data/uploads"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8081/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 45s
+
+  event-service:
+    build:
+      context: .
+      args: { MODULE: services/event-service }
+    depends_on:
+      mysql-bootstrap: { condition: service_completed_successfully }
+      kafka: { condition: service_healthy }
+    environment:
+      SERVER_PORT: 8082
+      EVENT_MYSQL_URL: jdbc:mysql://mysql:3306/agentflow_event?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      MYSQL_USERNAME: agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set in .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      JWT_ISSUER: ${JWT_ISSUER:-agentflow-enterprise}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8082/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 35s
+
+  gateway-service:
+    build:
+      context: .
+      args: { MODULE: services/gateway-service }
+    depends_on:
+      core-service: { condition: service_healthy }
+      event-service: { condition: service_healthy }
+    environment:
+      SERVER_PORT: 8080
+      CORE_SERVICE_URL: http://core-service:8081
+      EVENT_SERVICE_URL: http://event-service:8082
+    ports: ["8080:8080"]
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health/readiness"]
       interval: 15s
       timeout: 5s
       retries: 20
-      start_period: 40s
+      start_period: 25s
 
   prometheus:
     image: prom/prometheus:v3.5.0
     command: ["--config.file=/etc/prometheus/prometheus.yml"]
-    volumes:
-      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "9090:9090"
+    volumes: ["./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
     depends_on:
-      app:
-        condition: service_healthy
+      gateway-service: { condition: service_healthy }
 
   grafana:
     image: grafana/grafana:12.1.0
@@ -85,13 +160,12 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
 
 volumes:
   mysql_data:
   redis_data:
+  kafka_data:
   uploads_data:
   grafana_data:

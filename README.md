@@ -4,20 +4,20 @@
 
 <p align="center">
   <a href="https://github.com/pravinkaveya473-sketch/agentflow-enterprise/actions"><img src="https://img.shields.io/github/actions/workflow/status/pravinkaveya473-sketch/agentflow-enterprise/ci.yml?branch=main&style=flat-square&label=build" alt="Build"></a>
-  <img src="https://img.shields.io/badge/release-2.0.0-53e6d1?style=flat-square" alt="Release 2.0.0">
+  <img src="https://img.shields.io/badge/release-3.0.0-53e6d1?style=flat-square" alt="Release 3.0.0">
   <img src="https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk" alt="Java 21">
   <img src="https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot">
-  <img src="https://img.shields.io/badge/tests-16%20passed-22C55E?style=flat-square" alt="16 tests passed">
+  <img src="https://img.shields.io/badge/tests-19%20passed-22C55E?style=flat-square" alt="19 tests passed">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-6698ff?style=flat-square" alt="MIT License"></a>
 </p>
 
 <p align="center"><strong>企业级 Java AI Agent 任务编排、安全审批与可审计执行平台</strong></p>
 
-AgentFlow 将项目协作、任务状态机、显式 Agent Loop、人类审批、权限感知 RAG、Memory 和全链路观测组合为一个可运行系统。它解决的核心问题不是“调用一次模型”，而是：当 Agent 能修改真实业务状态时，怎样限制预算、阻断越权、保存证据并让故障可以追溯。
+AgentFlow 3.0 将原模块化单体按渐进式迁移策略拆为 Spring Cloud Gateway、Core Service 与 Event Service。核心业务继续保留状态机、Agent Loop、人类审批、权限感知 RAG 和 Memory；任务生命周期通过事务 Outbox 写入 Kafka，由独立事件服务幂等消费并形成审计查询模型。
 
-维护者：[@pravinkaveya473-sketch](https://github.com/pravinkaveya473-sketch) · 当前稳定版：`2.0.0`
+维护者：[@pravinkaveya473-sketch](https://github.com/pravinkaveya473-sketch) · 当前稳定版：`3.0.0` · [2.0 回退说明](docs/UPGRADE_ROLLBACK_V3.md)
 
-[快速开始](#快速开始) · [5 分钟演示](docs/DEMO.md) · [API 参考](docs/API.md) · [架构设计](docs/ARCHITECTURE.md) · [运维手册](docs/OPERATIONS.md) · [版本记录](CHANGELOG.md)
+[快速开始](#快速开始) · [微服务设计](docs/MICROSERVICES_V3.md) · [升级与回退](docs/UPGRADE_ROLLBACK_V3.md) · [API 参考](docs/API.md) · [运维手册](docs/OPERATIONS.md) · [版本记录](CHANGELOG.md)
 
 ## 产品界面
 
@@ -35,23 +35,32 @@ AgentFlow 将项目协作、任务状态机、显式 Agent Loop、人类审批�
 | Agent 如何安全修改业务数据 | JWT + RBAC + 领域状态机；高风险删除必须通过审批并在同一事务中消费审批 |
 | 多用户知识问答如何隔离 | 文档、向量过滤、Memory 会话均使用用户/知识库作用域；低相似度时拒绝编造 |
 | 如何定位一次错误执行 | Run/Step、Task Activity、Approval、Trace ID 和 Micrometer 指标形成完整证据链 |
-| 怎样证明仓库可以交付 | 16 项自动化测试、Compose 环境、Smoke Test、CI、Dependabot 和标签发布流程 |
+| 服务拆分后如何避免事件丢失 | Core 业务事务同时写 Outbox；后台确认 Kafka 发送成功后标记已发布 |
+| Kafka 重投如何避免重复数据 | Event Service 以 `event_id` 主键幂等落库；失败消息重试 2 次后进入 DLT |
+| 怎样证明仓库可以交付 | 19 项自动化测试、多服务 Compose、Smoke Test、CI、Dependabot 和标签发布流程 |
 
 ## 架构
 
 ```mermaid
 flowchart LR
-    UI[Operations Console / API Client] --> SEC[JWT + RBAC]
-    SEC --> APP[Project & Task Services]
+    UI[Operations Console / API Client] --> GW[Spring Cloud Gateway :8080]
+    GW --> CORE[Core Service :8081]
+    GW --> EVENT[Event Service :8082]
+    CORE --> SEC[JWT + RBAC]
     SEC --> AGENT[Explicit Agent Runtime]
     AGENT --> MODEL[OpenAI-compatible LLM]
     AGENT --> TOOLS[Project / Task / Knowledge Tools]
     TOOLS --> GATE[Approval Gate]
-    APP --> MYSQL[(MySQL)]
+    CORE --> MYSQL[(agentflow DB)]
     GATE --> MYSQL
     AGENT --> REDIS[(Redis Memory / Cache / Vector)]
-    AGENT -. Run & Step evidence .-> MYSQL
-    APP -. metrics & traces .-> OBS[Prometheus / Grafana]
+    CORE --> OUTBOX[(Transactional Outbox)]
+    OUTBOX --> KAFKA[(Kafka task lifecycle topic)]
+    KAFKA --> EVENT
+    EVENT --> EVENTDB[(agentflow_event DB)]
+    GW -. metrics .-> OBS[Prometheus / Grafana]
+    CORE -. metrics .-> OBS
+    EVENT -. metrics .-> OBS
 ```
 
 ### 执行不变量
@@ -61,6 +70,7 @@ flowchart LR
 - 项目归档后不能创建任务；终态任务不能再次修改；阻塞任务必须包含原因。
 - 审批只能被消费一次，并受状态、过期时间、资源 ID 和乐观锁共同保护。
 - 用户只能访问自己拥有或被分配的任务、知识库和 Agent Run。
+- 业务状态和 Outbox 在同一数据库事务中提交；Event Service 只接受可反序列化的版本化事件契约。
 
 ## 能力地图
 
@@ -92,11 +102,20 @@ flowchart LR
 - Dockerfile、Docker Compose、健康探针、Smoke Test 和 HTTP 示例
 - GitHub Actions CI、Dependabot 和 tag-based Release
 
+### 微服务与事件驱动
+
+- Spring Cloud Gateway 统一暴露 `8080`，核心服务与事件服务不直接暴露宿主机端口
+- `agentflow-event-contract` 固化跨服务事件字段，避免复制内部领域实体
+- 事务 Outbox 解决“业务提交成功但 Kafka 发送失败”的双写窗口
+- Kafka 3 分区按任务 ID 保序；消费者以事件 ID 去重，失败消息进入 `.DLT`
+
 ## 技术栈
 
 | Layer | Technology |
 |---|---|
 | Runtime | Java 21, Spring Boot 4.1, Spring AI 2.0 |
+| Cloud | Spring Cloud 2025.1.2, Gateway Server WebFlux |
+| Messaging | Apache Kafka 4.1, Spring Kafka, Transactional Outbox, DLT |
 | Security | Spring Security, OAuth2 Resource Server, JWT |
 | Persistence | Spring Data JPA, Flyway, MySQL 8.4 |
 | AI data | Redis Stack VectorStore, Redis Chat Memory, Apache Tika |
@@ -137,7 +156,8 @@ $env:JWT_SECRET="a-random-secret-with-at-least-32-bytes"
 $env:MYSQL_PASSWORD="your-mysql-password"
 $env:REDIS_PASSWORD="your-redis-password"
 $env:ADMIN_PASSWORD="your-admin-password"
-.\mvnw.cmd spring-boot:run
+docker compose up -d kafka
+.\mvnw.cmd -pl services/core-service -am spring-boot:run
 ```
 
 ## 验证
@@ -147,26 +167,23 @@ $env:ADMIN_PASSWORD="your-admin-password"
 powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ```
 
-当前测试覆盖领域状态迁移、审批生命周期、知识文件策略、Agent 运行上下文、任务服务权限与活动记录，以及 Dashboard 聚合逻辑。CI 在每次 push 和 pull request 上运行；发布标签会额外生成可下载 JAR。
+当前 19 项测试覆盖领域状态迁移、审批生命周期、知识文件策略、Agent 运行上下文、任务服务权限、Outbox 事件映射和 Event Service 重复事件过滤。CI 在每次 push 和 pull request 上运行。
 
 ## 目录
 
 ```text
-src/main/java/com/cjl/java_ai_agent
-├── agent          # 显式 Agent Loop 与 Run/Step 证据
-├── approval       # 高风险操作审批门禁
-├── dashboard      # Operations Console 聚合 API
-├── evaluation     # Agent 评估数据集和执行器
-├── infrastructure # Redis 幂等、限流和缓存
-├── knowledge      # 文档摄取、向量检索和 RAG
-├── project        # 项目聚合与 Agent Tool
-├── security       # JWT、RBAC 和用户管理
-└── task           # 任务状态机、活动审计与 Tool
+libs/event-contract        # 版本化 Kafka 事件契约
+services/core-service      # 原成熟业务域 + Outbox + Kafka Producer
+services/event-service     # Kafka Consumer + 独立审计读模型
+services/gateway-service   # Spring Cloud Gateway 统一入口
+deploy/mysql/init          # 独立事件数据库初始化
+docs/MICROSERVICES_V3.md   # 服务边界与可靠性设计
+docs/UPGRADE_ROLLBACK_V3.md# 2.0 → 3.0 升级及回退步骤
 ```
 
 ## 适用边界
 
-这是一个可构建、可测试、可本地部署的工程作品，不声称已经承载真实生产流量。正式生产使用前仍应接入企业密钥管理、TLS、数据库备份、集中日志、告警规则与组织级身份源，并根据实际流量完成容量测试。
+这是一个可构建、可测试、可本地部署的工程作品。3.0 采用小规模渐进式拆分，未声称所有业务域均已独立服务化，也不声称承载过真实生产流量。正式生产使用前仍需接入 Schema Registry、企业密钥管理、TLS、数据库备份、集中日志、告警和容量测试。
 
 ## License
 
