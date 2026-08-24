@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/pravinkaveya473-sketch/agentflow-enterprise/actions"><img src="https://img.shields.io/github/actions/workflow/status/pravinkaveya473-sketch/agentflow-enterprise/ci.yml?branch=main&style=flat-square&label=build" alt="Build"></a>
-  <img src="https://img.shields.io/badge/release-3.0.0-53e6d1?style=flat-square" alt="Release 3.0.0">
+  <img src="https://img.shields.io/badge/release-3.0.1-53e6d1?style=flat-square" alt="Release 3.0.1">
   <img src="https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk" alt="Java 21">
   <img src="https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?style=flat-square&logo=springboot&logoColor=white" alt="Spring Boot">
   <img src="https://img.shields.io/badge/tests-19%20passed-22C55E?style=flat-square" alt="19 tests passed">
@@ -15,9 +15,9 @@
 
 AgentFlow 3.0 将原模块化单体按渐进式迁移策略拆为 Spring Cloud Gateway、Core Service 与 Event Service。核心业务继续保留状态机、Agent Loop、人类审批、权限感知 RAG 和 Memory；任务生命周期通过事务 Outbox 写入 Kafka，由独立事件服务幂等消费并形成审计查询模型。
 
-维护者：[@pravinkaveya473-sketch](https://github.com/pravinkaveya473-sketch) · 当前稳定版：`3.0.0` · [2.0 回退说明](docs/UPGRADE_ROLLBACK_V3.md)
+维护者：[@pravinkaveya473-sketch](https://github.com/pravinkaveya473-sketch) · 当前稳定版：`3.0.1` · [2.0 回退说明](docs/UPGRADE_ROLLBACK_V3.md)
 
-[快速开始](#快速开始) · [微服务设计](docs/MICROSERVICES_V3.md) · [升级与回退](docs/UPGRADE_ROLLBACK_V3.md) · [API 参考](docs/API.md) · [运维手册](docs/OPERATIONS.md) · [版本记录](CHANGELOG.md)
+[快速开始](#快速开始) · [微服务设计](docs/MICROSERVICES_V3.md) · [端到端验证](docs/E2E_VALIDATION_V3.md) · [升级与回退](docs/UPGRADE_ROLLBACK_V3.md) · [API 参考](docs/API.md) · [运维手册](docs/OPERATIONS.md) · [版本记录](CHANGELOG.md)
 
 ## 产品界面
 
@@ -160,6 +160,15 @@ docker compose up -d kafka
 .\mvnw.cmd -pl services/core-service -am spring-boot:run
 ```
 
+### 网络受限环境构建
+
+若容器内无法稳定访问 Maven Central，可先使用宿主机 Maven 缓存构建 JAR，再用纯运行时镜像启动；业务拓扑与默认 Compose 保持一致：
+
+```powershell
+.\mvnw.cmd clean package -DskipTests
+docker compose -f compose.yaml -f compose.runtime.yaml --env-file .env up -d --build
+```
+
 ## 验证
 
 ```powershell
@@ -168,6 +177,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test.ps1
 ```
 
 当前 19 项测试覆盖领域状态迁移、审批生命周期、知识文件策略、Agent 运行上下文、任务服务权限、Outbox 事件映射和 Event Service 重复事件过滤。CI 在每次 push 和 pull request 上运行。
+
+`3.0.1` 已在 Docker Desktop 29.6.2 上完成完整容器验证，包括 Gateway → Core → Outbox → Kafka → Event Service 业务闭环，以及 Prometheus 三服务抓取和 Grafana 健康检查；详见[验证记录](docs/E2E_VALIDATION_V3.md)。
 
 ## 目录
 

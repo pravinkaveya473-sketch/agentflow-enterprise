@@ -1,0 +1,9 @@
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+ARG MODULE=services/core-service
+RUN mkdir -p /app/data/uploads \
+    && chown -R 10001:0 /app
+COPY ${MODULE}/target/*.jar app.jar
+USER 10001
+EXPOSE 8080 8081 8082
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-XX:+ExitOnOutOfMemoryError", "-jar", "/app/app.jar"]

@@ -16,6 +16,12 @@ Gateway is the only public HTTP entry point. Core Service owns the `agentflow` w
 
 Never place real values in `.env.example`, source code, container images or CI logs.
 
+For infrastructure-only local verification with a placeholder model credential, set `VECTOR_STORE_INITIALIZE_SCHEMA=false`. Set it to `true` when a valid embedding credential is available and vector search is being verified.
+
+When Maven Central is unstable from inside Docker, run `mvnw clean package -DskipTests` on the host and overlay `compose.runtime.yaml` to build minimal runtime images from the verified JARs. The service topology is unchanged.
+
+An initialized MySQL data volume keeps its original account passwords. Environment variable changes do not rotate those stored credentials; retain the existing values during upgrades or perform an explicit database credential rotation before restarting services.
+
 ## Health and observability
 
 | Endpoint | Audience |

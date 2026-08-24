@@ -91,13 +91,14 @@ services:
       QWEN_BASE_URL: ${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode}
       QWEN_MODEL: ${QWEN_MODEL:-qwen-plus}
       QWEN_EMBEDDING_MODEL: ${QWEN_EMBEDDING_MODEL:-text-embedding-v3}
+      VECTOR_STORE_INITIALIZE_SCHEMA: ${VECTOR_STORE_INITIALIZE_SCHEMA:-false}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       JWT_ISSUER: ${JWT_ISSUER:-agentflow-enterprise}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set in .env}
     volumes: ["uploads_data:/app/data/uploads"]
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8081/actuator/health/readiness"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8081"]
       interval: 15s
       timeout: 5s
       retries: 20
@@ -119,7 +120,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       JWT_ISSUER: ${JWT_ISSUER:-agentflow-enterprise}
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8082/actuator/health/readiness"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8082"]
       interval: 15s
       timeout: 5s
       retries: 20
@@ -138,7 +139,7 @@ services:
       EVENT_SERVICE_URL: http://event-service:8082
     ports: ["8080:8080"]
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health/readiness"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080"]
       interval: 15s
       timeout: 5s
       retries: 20

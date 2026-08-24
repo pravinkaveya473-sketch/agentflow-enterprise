@@ -2,6 +2,14 @@
 
 All notable changes are recorded here. This project follows semantic versioning.
 
+## 3.0.1 — 2026-08-24
+
+- Completed a clean-volume Docker Compose end-to-end deployment and business-path verification.
+- Fixed Spring Boot 4 Kafka auto-configuration by adopting the Kafka starter and Jackson 2 compatibility module required by Spring Kafka serializers.
+- Added the Jedis client required by Spring AI Redis VectorStore and made local vector-index initialization configurable so infrastructure tests do not require a live embedding credential.
+- Removed package-manager dependence from runtime images, added BuildKit/Maven caching, and provided a host-built JAR runtime-image overlay for restricted networks.
+- Verified transactional Outbox publication, Kafka consumption, DLT provisioning, Prometheus targets and Grafana health.
+
 ## 3.0.0 — 2026-08-24
 
 - Converted the repository into a Maven multi-module Spring Cloud architecture.

@@ -1,19 +1,19 @@
+# syntax=docker/dockerfile:1.7
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 ARG MODULE=services/core-service
 COPY . .
-RUN chmod +x mvnw && ./mvnw -q -pl ${MODULE} -am clean package -DskipTests
+RUN --mount=type=cache,target=/root/.m2/repository \
+    chmod +x mvnw \
+    && ./mvnw -q -pl ${MODULE} -am clean package -DskipTests \
+        -Dmaven.wagon.http.retryHandler.count=5
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 ARG MODULE=services/core-service
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --uid 10001 appuser \
-    && mkdir -p /app/data/uploads \
-    && chown -R appuser:appuser /app
+RUN mkdir -p /app/data/uploads \
+    && chown -R 10001:0 /app
 COPY --from=build /workspace/${MODULE}/target/*.jar app.jar
-USER appuser
+USER 10001
 EXPOSE 8080 8081 8082
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-XX:+ExitOnOutOfMemoryError", "-jar", "/app/app.jar"]

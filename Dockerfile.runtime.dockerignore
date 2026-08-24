@@ -1,0 +1,5 @@
+*
+!services/
+!services/*/
+!services/*/target/
+!services/*/target/*.jar

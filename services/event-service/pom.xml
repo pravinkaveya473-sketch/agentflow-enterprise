@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.pravinkaveya473sketch</groupId>
         <artifactId>agentflow-enterprise</artifactId>
-        <version>3.0.0</version>
+        <version>3.0.1</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>agentflow-event-service</artifactId>
@@ -19,7 +19,8 @@
         </dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-jpa</artifactId></dependency>
-        <dependency><groupId>org.springframework.kafka</groupId><artifactId>spring-kafka</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-kafka</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-jackson2</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-oauth2-resource-server</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>

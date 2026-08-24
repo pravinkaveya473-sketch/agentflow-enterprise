@@ -1,0 +1,12 @@
+services:
+  core-service:
+    build:
+      dockerfile: Dockerfile.runtime
+
+  event-service:
+    build:
+      dockerfile: Dockerfile.runtime
+
+  gateway-service:
+    build:
+      dockerfile: Dockerfile.runtime

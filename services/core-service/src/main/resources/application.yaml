@@ -37,11 +37,12 @@ spring:
 
   data:
     redis:
+      client-type: jedis
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 3s
-      lettuce:
+      jedis:
         pool:
           max-active: 32
           max-idle: 16
@@ -75,7 +76,7 @@ spring:
       on-client-errors: false
     vectorstore:
       redis:
-        initialize-schema: true
+        initialize-schema: ${VECTOR_STORE_INITIALIZE_SCHEMA:true}
         index-name: agentflow-rag-index
         prefix: "rag:chunk:"
         distance-metric: COSINE
